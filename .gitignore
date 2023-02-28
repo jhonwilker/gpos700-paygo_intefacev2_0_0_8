@@ -1,0 +1,5 @@
+# ignora seguintes diretórios
+Win32/
+Win64/
+Android/
+Android64/
