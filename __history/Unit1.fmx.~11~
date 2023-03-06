@@ -8,7 +8,7 @@ object Form1: TForm1
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
   OnCreate = FormCreate
-  DesignerMasterStyle = 0
+  DesignerMasterStyle = 3
   object Layout1: TLayout
     Align = Client
     Size.Width = 361.000000000000000000
@@ -43,7 +43,7 @@ object Form1: TForm1
       Position.Y = 56.000000000000000000
       Hint = 'R$ 0,00'
       Size.Width = 137.000000000000000000
-      Size.Height = 25.000000000000000000
+      Size.Height = 32.000000000000000000
       Size.PlatformDefault = False
     end
     object GroupBox2: TGroupBox
@@ -128,7 +128,7 @@ object Form1: TForm1
       Enabled = False
       Hint = 'R$ 0,00'
       Size.Width = 137.000000000000000000
-      Size.Height = 30.000000000000000000
+      Size.Height = 32.000000000000000000
       Size.PlatformDefault = False
     end
     object cbAdquirente: TComboBox
@@ -136,7 +136,7 @@ object Form1: TForm1
       Position.X = 184.000000000000000000
       Position.Y = 308.000000000000000000
       Size.Width = 161.000000000000000000
-      Size.Height = 27.000000000000000000
+      Size.Height = 32.000000000000000000
       Size.PlatformDefault = False
       ParentShowHint = False
       ShowHint = True
@@ -145,72 +145,94 @@ object Form1: TForm1
         Size.Width = 19.000000000000000000
         Size.Height = 19.000000000000000000
         Size.PlatformDefault = False
+        TabOrder = 0
         Text = 'PROVEDOR DESCONHECIDO'
       end
       object ListBoxItem2: TListBoxItem
         Size.Width = 19.000000000000000000
         Size.Height = 19.000000000000000000
         Size.PlatformDefault = False
+        TabOrder = 1
         Text = 'ListBoxItem2'
       end
       object ListBoxItem3: TListBoxItem
+        TabOrder = 2
         Text = 'ListBoxItem3'
       end
       object ListBoxItem4: TListBoxItem
+        TabOrder = 3
         Text = 'ListBoxItem4'
       end
       object ListBoxItem5: TListBoxItem
+        TabOrder = 4
         Text = 'ListBoxItem5'
       end
       object ListBoxItem6: TListBoxItem
+        TabOrder = 5
         Text = 'ListBoxItem6'
       end
       object ListBoxItem7: TListBoxItem
+        TabOrder = 6
         Text = 'ListBoxItem7'
       end
       object ListBoxItem8: TListBoxItem
+        TabOrder = 7
         Text = 'ListBoxItem8'
       end
       object ListBoxItem9: TListBoxItem
+        TabOrder = 8
         Text = 'ListBoxItem9'
       end
       object ListBoxItem10: TListBoxItem
+        TabOrder = 9
         Text = 'ListBoxItem10'
       end
       object ListBoxItem11: TListBoxItem
+        TabOrder = 10
         Text = 'ListBoxItem11'
       end
       object ListBoxItem12: TListBoxItem
+        TabOrder = 11
         Text = 'ListBoxItem12'
       end
       object ListBoxItem13: TListBoxItem
+        TabOrder = 12
         Text = 'ListBoxItem13'
       end
       object ListBoxItem14: TListBoxItem
+        TabOrder = 13
         Text = 'ListBoxItem14'
       end
       object ListBoxItem15: TListBoxItem
+        TabOrder = 14
         Text = 'ListBoxItem15'
       end
       object ListBoxItem16: TListBoxItem
+        TabOrder = 15
         Text = 'ListBoxItem16'
       end
       object ListBoxItem17: TListBoxItem
+        TabOrder = 16
         Text = 'ListBoxItem17'
       end
       object ListBoxItem18: TListBoxItem
+        TabOrder = 17
         Text = 'ListBoxItem18'
       end
       object ListBoxItem19: TListBoxItem
+        TabOrder = 18
         Text = 'ListBoxItem19'
       end
       object ListBoxItem20: TListBoxItem
+        TabOrder = 19
         Text = 'ListBoxItem20'
       end
       object ListBoxItem21: TListBoxItem
+        TabOrder = 20
         Text = 'ListBoxItem21'
       end
       object ListBoxItem22: TListBoxItem
+        TabOrder = 21
         Text = 'ListBoxItem22'
       end
     end
@@ -332,5 +354,67 @@ object Form1: TForm1
         OnChange = cbVoucherChange
       end
     end
+    object lay_teste: TLayout
+      Align = Center
+      Size.Width = 333.000000000000000000
+      Size.Height = 391.000000000000000000
+      Size.PlatformDefault = False
+      Visible = False
+      TabOrder = 1
+      object Rectangle2: TRectangle
+        Align = Client
+        Fill.Color = claWhite
+        Size.Width = 333.000000000000000000
+        Size.Height = 391.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Color = claWhite
+        object Memo1: TMemo
+          Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
+          DataDetectorTypes = []
+          Align = Client
+          Size.Width = 333.000000000000000000
+          Size.Height = 341.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 1
+          Viewport.Width = 325.000000000000000000
+          Viewport.Height = 333.000000000000000000
+        end
+        object bt_fechar: TButton
+          Align = Bottom
+          Margins.Bottom = 5.000000000000000000
+          Position.Y = 341.000000000000000000
+          Size.Width = 333.000000000000000000
+          Size.Height = 45.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 0
+          Text = 'Fechar'
+        end
+      end
+    end
+  end
+  object ACBrTEFAndroid: TACBrTEFAndroid
+    DadosAutomacao.NomeSoftwareHouse = 'Giro'
+    DadosAutomacao.CNPJSoftwareHouse = '06922188000101'
+    DadosAutomacao.NomeAplicacao = 'PaygoTeste'
+    DadosAutomacao.VersaoAplicacao = '1'
+    DadosAutomacao.AutoAtendimento = False
+    DadosEstabelecimento.CNPJ = '06922188000101'
+    DadosEstabelecimento.RazaoSocial = 'JAP'
+    QuandoFinalizarOperacao = ACBrTEFAndroidQuandoFinalizarOperacao
+    QuandoDetectarTransacaoPendente = ACBrTEFAndroidQuandoDetectarTransacaoPendente
+    Left = 144
+    Top = 312
+  end
+  object ACBrPosPrinter: TACBrPosPrinter
+    ConfigBarras.MostrarCodigo = False
+    ConfigBarras.LarguraLinha = 0
+    ConfigBarras.Altura = 0
+    ConfigBarras.Margem = 0
+    ConfigQRCode.Tipo = 2
+    ConfigQRCode.LarguraModulo = 4
+    ConfigQRCode.ErrorLevel = 0
+    LinhasEntreCupons = 0
+    Left = 48
+    Top = 315
   end
 end

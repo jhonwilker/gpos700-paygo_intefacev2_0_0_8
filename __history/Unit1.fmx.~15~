@@ -38,7 +38,7 @@ object Form1: TForm1
     end
     object editValor: TEdit
       Touch.InteractiveGestures = [LongTap, DoubleTap]
-      Text = '8.00'
+      Text = '8,00'
       Position.X = 200.000000000000000000
       Position.Y = 56.000000000000000000
       Hint = 'R$ 0,00'
@@ -391,5 +391,40 @@ object Form1: TForm1
         end
       end
     end
+    object Button1: TButton
+      Position.X = 8.000000000000000000
+      Position.Y = 37.000000000000000000
+      Size.Width = 41.000000000000000000
+      Size.Height = 44.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 2
+      Text = 'Button1'
+      OnClick = Button1Click
+    end
+  end
+  object ACBrTEFAndroid: TACBrTEFAndroid
+    DadosAutomacao.NomeSoftwareHouse = 'Giro'
+    DadosAutomacao.CNPJSoftwareHouse = '06922188000101'
+    DadosAutomacao.NomeAplicacao = 'PaygoTeste'
+    DadosAutomacao.VersaoAplicacao = '1'
+    DadosAutomacao.AutoAtendimento = False
+    DadosEstabelecimento.CNPJ = '06922188000101'
+    DadosEstabelecimento.RazaoSocial = 'JAP'
+    QuandoFinalizarOperacao = ACBrTEFAndroidQuandoFinalizarOperacao
+    QuandoDetectarTransacaoPendente = ACBrTEFAndroidQuandoDetectarTransacaoPendente
+    Left = 144
+    Top = 312
+  end
+  object ACBrPosPrinter: TACBrPosPrinter
+    ConfigBarras.MostrarCodigo = False
+    ConfigBarras.LarguraLinha = 0
+    ConfigBarras.Altura = 0
+    ConfigBarras.Margem = 0
+    ConfigQRCode.Tipo = 2
+    ConfigQRCode.LarguraModulo = 4
+    ConfigQRCode.ErrorLevel = 0
+    LinhasEntreCupons = 0
+    Left = 48
+    Top = 315
   end
 end

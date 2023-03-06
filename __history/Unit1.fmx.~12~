@@ -354,5 +354,67 @@ object Form1: TForm1
         OnChange = cbVoucherChange
       end
     end
+    object lay_teste: TLayout
+      Align = Center
+      Size.Width = 333.000000000000000000
+      Size.Height = 391.000000000000000000
+      Size.PlatformDefault = False
+      Visible = False
+      TabOrder = 1
+      object Rectangle2: TRectangle
+        Align = Client
+        Fill.Color = claWhite
+        Size.Width = 333.000000000000000000
+        Size.Height = 391.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Color = claWhite
+        object Memo1: TMemo
+          Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
+          DataDetectorTypes = []
+          Align = Client
+          Size.Width = 333.000000000000000000
+          Size.Height = 341.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 1
+          Viewport.Width = 325.000000000000000000
+          Viewport.Height = 333.000000000000000000
+        end
+        object bt_fechar: TButton
+          Align = Bottom
+          Margins.Bottom = 5.000000000000000000
+          Position.Y = 341.000000000000000000
+          Size.Width = 333.000000000000000000
+          Size.Height = 45.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 0
+          Text = 'Fechar'
+        end
+      end
+    end
+  end
+  object ACBrTEFAndroid: TACBrTEFAndroid
+    DadosAutomacao.NomeSoftwareHouse = 'Giro'
+    DadosAutomacao.CNPJSoftwareHouse = '06922188000101'
+    DadosAutomacao.NomeAplicacao = 'PaygoTeste'
+    DadosAutomacao.VersaoAplicacao = '1'
+    DadosAutomacao.AutoAtendimento = False
+    DadosEstabelecimento.CNPJ = '06922188000101'
+    DadosEstabelecimento.RazaoSocial = 'JAP'
+    QuandoFinalizarOperacao = ACBrTEFAndroidQuandoFinalizarOperacao
+    QuandoDetectarTransacaoPendente = ACBrTEFAndroidQuandoDetectarTransacaoPendente
+    Left = 144
+    Top = 312
+  end
+  object ACBrPosPrinter: TACBrPosPrinter
+    ConfigBarras.MostrarCodigo = False
+    ConfigBarras.LarguraLinha = 0
+    ConfigBarras.Altura = 0
+    ConfigBarras.Margem = 0
+    ConfigQRCode.Tipo = 2
+    ConfigQRCode.LarguraModulo = 4
+    ConfigQRCode.ErrorLevel = 0
+    LinhasEntreCupons = 0
+    Left = 48
+    Top = 315
   end
 end

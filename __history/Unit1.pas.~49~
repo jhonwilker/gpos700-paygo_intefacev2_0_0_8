@@ -5,12 +5,13 @@ interface
 uses
 
   //InterfaceAutomacao_v1_6_0_0,
-  InterfaceAutomacao_v2_0_0_8,
+  InterfaceAutomacao_v2_1,
 
   Unit2,
 
   GEDIPrinter,    //Esta unit inicializa o Modulo de impressao G700.
   G700Interface,
+  ACBrPosPrinterGEDI,
 
   Androidapi.JNI.JavaTypes,
   Androidapi.Helpers,
@@ -35,12 +36,14 @@ uses
   FMX.Objects,
   FMX.ListBox,
   FMX.DialogService,
-
+  ACBrTEFComum,
   Androidapi.JNIBridge,
   Androidapi.JNI.App,
+  Androidapi.JNI.Widget,
   Androidapi.Jni.GraphicsContentViewText,
   Androidapi.JNI.Util,
-  Androidapi.Jni.OS, FMX.Memo.Types, FMX.ScrollBox, FMX.Memo;
+  Androidapi.Jni.OS, FMX.Memo.Types, FMX.ScrollBox, FMX.Memo, ACBrBase,
+  ACBrTEFAPIComum, ACBrTEFAndroid,ACBrTEFPayGoComum, ACBrTEFAndroidPayGo, ACBrPosPrinter;
 
 type
   TForm1 = class(TForm)
@@ -95,6 +98,9 @@ type
     Rectangle2: TRectangle;
     Memo1: TMemo;
     bt_fechar: TButton;
+    ACBrTEFAndroid: TACBrTEFAndroid;
+    ACBrPosPrinter: TACBrPosPrinter;
+    Button1: TButton;
     procedure FormCreate(Sender: TObject);
     procedure btnPagarClick(Sender: TObject);
     procedure btnCancelamentoClick(Sender: TObject);
@@ -103,7 +109,18 @@ type
     procedure cbCreditoChange(Sender: TObject);
     procedure cbDebitoChange(Sender: TObject);
     procedure cbVoucherChange(Sender: TObject);
+    procedure ACBrTEFAndroidQuandoFinalizarOperacao(RespostaTEF: TACBrTEFResp);
+    procedure ACBrTEFAndroidQuandoDetectarTransacaoPendente(
+      RespostaTEF: TACBrTEFResp; const MsgErro: string);
+    procedure Button1Click(Sender: TObject);
   private
+    fGEDIPrinter: TACBrPosPrinterGEDI;
+    procedure IniciaTEFACBR;
+    procedure ExecutarAdministrativo(Operacao: String = '');
+    procedure ImprimirComprovantes(ATEFResp: TACBrTEFResp);
+    procedure ImprimirRelatorio(ATexto: String);
+    procedure Toast(const AMsg: string; ShortDuration: Boolean);
+    procedure ConfiguraImpressora;
     { Private declarations }
   public
     { Public declarations }
@@ -157,18 +174,37 @@ procedure TForm1.LogAplicacao(msg: String);
 var
   M: TMarshaller;
 begin
-  LOGW(M.AsUtf8(msg).ToPointer);
+  LOGI(M.AsUtf8(msg).ToPointer);
 end;
 // **********************************************
+procedure TForm1.Toast(const AMsg: string; ShortDuration: Boolean);
+var
+  ToastLength: Integer;
+begin
 
+  TDialogService.ShowMessage(AMsg);
+  {{$IfNDef ANDROID
+   TDialogService.ShowMessage(AMsg);
+   {$Else
+   if ShortDuration then
+     ToastLength := TJToast.JavaClass.LENGTH_SHORT
+   else
+     ToastLength := TJToast.JavaClass.LENGTH_LONG;
+
+   TJToast.JavaClass.makeText(SharedActivityContext, StrToJCharSequence(AMsg), ToastLength).show;
+   Application.ProcessMessages;
+  $EndIf}
+end;
 // **********************************************
 procedure TForm1.FormCreate(Sender: TObject);
 begin
+    fGEDIPrinter := TACBrPosPrinterGEDI.Create(ACBrPosPrinter);
 
-    iniPayGoInterface(false, false, false);
+    //iniPayGoInterface(false, false, false);
+
     setTexLisBox;
     mHandler := TJHandler.Create;
-  
+
 
   // dateFormat := TJDate
 end;
@@ -257,10 +293,265 @@ end;
 // **********************************************
 
 // **********************************************
-procedure TForm1.btnAdministrativoClick(Sender: TObject);
+procedure TForm1.ACBrTEFAndroidQuandoDetectarTransacaoPendente(
+  RespostaTEF: TACBrTEFResp; const MsgErro: string);
+var
+  AStatus: TACBrTEFStatusTransacao;
+  i: Integer;
+  ATEFResp: TACBrTEFResp;
+  aMsgErro: String;
+begin
+  // Aqui você pode Confirmar ou Desfazer as transações pendentes de acordo com
+  // a sua regra de negócios
+
+  // Exemplo 0 - Deixe o ACBrTEFAndroid CONFIRMAR todas transações pendentes automaticamente
+  // ACBrTEFAndroid1.AutoConfirmarTransacoesPendente := True;
+  // Nesse caso... esse evento não será disparado.
+
+  // Exemplo 1 -  Envio de confirmação automática:
+  // AStatus := stsSucessoManual;
+  // ACBrTEFAndroid1.ResolverOperacaoPendente(AStatus);
+
+  // Exemplo 2 -  Fazer uma pergunta ao usuário:
+  if (MsgErro = '') then
+    AMsgErro := RespostaTEF.TextoEspecialOperador
+  else
+    AMsgErro := MsgErro;
+
+  TDialogService.MessageDialog( AMsgErro + sLineBreak+sLineBreak +
+                                'Confirmar ?',
+                                TMsgDlgType.mtConfirmation,
+                                [TMsgDlgBtn.mbYes, TMsgDlgBtn.mbNo],
+                                TMsgDlgBtn.mbYes, 0,
+
+    procedure(const AResult: TModalResult)
+    begin
+        if (AResult = mrYes) then
+          AStatus := TACBrTEFStatusTransacao.tefstsSucessoManual
+        else
+          AStatus := TACBrTEFStatusTransacao.tefstsErroDiverso;
+
+        ACBrTEFAndroid.ResolverTransacaoPendente(AStatus);
+      end
+  );
+
+  // Se confirmou, vamos re-imprimir a transação que ficou pendente
+  if (AStatus in [tefstsSucessoAutomatico, tefstsSucessoManual]) then
+  begin
+    ATEFResp := RespostaTEF;
+    // Achando a transação original...
+    for i := 0 to ACBrTEFAndroid.RespostasTEF.Count-1 do
+    begin
+      if (ACBrTEFAndroid.RespostasTEF[i].NSU = RespostaTEF.NSU) and
+         (ACBrTEFAndroid.RespostasTEF[i].Rede = RespostaTEF.Rede) then
+      begin
+        ATEFResp := ACBrTEFAndroid.RespostasTEF[i];
+        Break;
+      end;
+    end;
+
+    ImprimirComprovantes(ATEFResp);
+  end;
+
+end;
+
+procedure TForm1.ImprimirRelatorio(ATexto: String);
+var
+  ComandoInicial, ComandoFinal: string;
 begin
 
-  efetuaOperacao(TJOperacoes.JavaClass.ADMINISTRATIVA);
+  {GertecPrinter.textSize := 18;
+  GertecPrinter.FlagBold := true;
+  GertecPrinter.textFamily := 0;
+  GertecPrinter.PrintString(ESQUERDA, ATexto);
+  GertecPrinter.printBlankLine(150);
+  GertecPrinter.printOutput;}
+
+  comandoInicial := '</zera>';
+  if false then
+    ComandoInicial := ComandoInicial + '<c>';
+  if true then
+    ComandoInicial := ComandoInicial + '<n>';
+  ComandoFinal := '</lf></corte_total>';
+
+  ConfiguraImpressora;
+  ACBrPosPrinter.Ativar;
+  ACBrPosPrinter.Imprimir(ComandoInicial + ATexto + ComandoFinal);
+  ACBrPosPrinter.desAtivar;
+
+
+end;
+
+procedure TForm1.ConfiguraImpressora;
+begin
+
+  ACBrPosPrinter.ConfigLogo.KeyCode1 := 1;
+  ACBrPosPrinter.ConfigLogo.KeyCode2 := 0;
+  ACBrPosPrinter.ModeloExterno  := fGEDIPrinter;
+  ACBrPosPrinter.PaginaDeCodigo := TACBrPosPaginaCodigo(0);//TACBrPosPaginaCodigo(pcNone);//(pcNone, pc437, pc850, pc852, pc860, pcUTF8, pc1252);
+  ACBrPosPrinter.ColunasFonteNormal := 32;
+  ACBrPosPrinter.Inicializar;
+
+
+end;
+
+procedure TForm1.ImprimirComprovantes(ATEFResp: TACBrTEFResp);
+begin
+  if not Assigned(ATEFResp) then
+    Exit;
+
+  if (ATEFResp.ImagemComprovante2aVia.Count > 0) then
+    ImprimirRelatorio( ATEFResp.ImagemComprovante2aVia.Text );
+
+  if (ATEFResp.ImagemComprovante1aVia.Count > 0) then
+  begin
+    if true or         // Configurado para sempre Imprimir
+       (ATEFResp.ImagemComprovante2aVia.Count = 0) then  // Só recebeu a via do Cliente
+    begin
+      ImprimirRelatorio( ATEFResp.ImagemComprovante1aVia.Text )
+    end else if true then   // Perguntar
+    begin
+
+         TDialogService.MessageDialog( 'Imprimir Via do Cliente ?',
+                                    TMsgDlgType.mtConfirmation,
+                                    [TMsgDlgBtn.mbYes, TMsgDlgBtn.mbNo],
+                                    TMsgDlgBtn.mbYes, 0,
+        procedure(const AResult: TModalResult)
+        var
+          AStatus: LongWord;
+        begin
+          if (AResult = mrYes) then
+            ImprimirRelatorio( ATEFResp.ImagemComprovante1aVia.Text );
+        end);
+
+
+
+    end;
+  end;
+end;
+
+procedure TForm1.ACBrTEFAndroidQuandoFinalizarOperacao(
+  RespostaTEF: TACBrTEFResp);
+var
+  i, nINFO: Integer;
+  TheKey, TheValue: string;
+  MsgFinal: String;
+begin
+
+  LogAplicacao('FINALLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL ACBrTEFAndroidQuandoFinalizarOperacao');
+  //  if swExibirLogAposTransacao.IsChecked then
+  //    MostrarTelaUltimaTransacao;
+
+  {with memoDadosUltimaTransacao.Lines do
+  begin
+    Clear;
+
+    MsgFinal := RespostaTEF.TextoEspecialOperador;
+
+    Add('');
+    Add('');
+    Add('------ Fim da Transação ------');
+    Add('Sucesso: '+IfThen(RespostaTEF.Sucesso, 'SIM', 'NÃO'));
+    Add('Resultado: '+MsgFinal);
+
+    // Usando as propriedades de TACBrTEFResp
+    Add('');
+    Add('- Rede: '  + RespostaTEF.Rede );
+    Add('- NSU: '  + RespostaTEF.NSU );
+    Add('- Parcelas: '+ IntToStr(RespostaTEF.QtdParcelas) +
+                  ', parcelado por: '+
+                  GetEnumName(TypeInfo(TACBrTEFRespParceladoPor), integer(RespostaTEF.ParceladoPor) ));
+    Add('- Tipo Cartão: '+IfThen(RespostaTEF.Debito, 'Debito',
+                                  IfThen(RespostaTEF.Credito, 'Crédito', '')) );
+    Add(' - Valor: '+ FormatFloat(',0.00',RespostaTEF.ValorTotal)) ;
+
+    // Lendo um Campo Específico //
+    Add('- PWINFO_REQNUM: ' + RespostaTEF.LeInformacao(PWINFO_REQNUM,0).AsString );
+  end;}
+
+  {memoViaEstabelecimento.Lines.Text := RespostaTEF.ImagemComprovante2aVia.Text;
+  memoViaCliente.Lines.Text  := RespostaTEF.ImagemComprovante1aVia.Text;}
+
+  // Exemplo de como processar a Impressão dos comprovantes
+  if not RespostaTEF.Sucesso then
+  begin
+    if MsgFinal.ToUpper.Contains('PENDENTE') then
+    begin
+      if (ACBrTEFAndroid.TratamentoTransacaoPendente = tefpenConfirmar) then
+        MsgFinal := MsgFinal + sLineBreak + 'Transação será CONFIRMADA'
+      else if (ACBrTEFAndroid.TratamentoTransacaoPendente = tefpenEstornar) then
+          MsgFinal := MsgFinal + sLineBreak + 'Transação será ESTORNADA'
+      else
+        MsgFinal := '';  // Ignora esse erro, pois será tratado em QuandoDetectarTransacaoPendente
+    end;
+  end
+  else
+  begin
+    // Para Confirmar a transação Automáticamento... use:
+    //      "ConfirmarTransacoesAutomaticamente := True"
+    // Para Confirmar Manualmente a trasação, use o exemplo abaixo...
+    if cbConfManual.IsChecked and RespostaTEF.Confirmar then
+    begin
+      MsgFinal := '';
+      TDialogService.MessageDialog( 'Transação Autorizada'+sLineBreak+sLineBreak+
+                                    'Deseja Confirmar ?',
+                                    TMsgDlgType.mtConfirmation,
+                                    [TMsgDlgBtn.mbYes, TMsgDlgBtn.mbNo],
+                                    TMsgDlgBtn.mbYes, 0,
+
+        procedure(const AResult: TModalResult)
+        var
+          AStatus: TACBrTEFStatusTransacao;
+        begin
+            if (AResult = mrYes) then
+              AStatus := TACBrTEFStatusTransacao.tefstsSucessoManual
+            else
+              AStatus := TACBrTEFStatusTransacao.tefstsErroDiverso;
+
+            ACBrTEFAndroid.FinalizarTransacao(AStatus);
+
+            if (AResult = mrYes) then
+              ImprimirComprovantes(RespostaTEF);
+        end);
+
+    end
+    else
+      ImprimirComprovantes(RespostaTEF);
+  end;
+
+  if (MsgFinal <> '') then
+  begin
+    if not RespostaTEF.Sucesso then
+      TDialogService.MessageDialog( MsgFinal,
+                                    TMsgDlgType.mtError,
+                                    [TMsgDlgBtn.mbOK],
+                                    TMsgDlgBtn.mbOK, 0, nil)
+    else
+      Toast(MsgFinal, False);
+  end;
+
+  // Exemplo de como usar as Propriedades da API, fazendo TypeCast
+  if (ACBrTEFAndroid.TEF is TACBrTEFAndroidPayGoClass) then
+  begin
+    //memoDadosUltimaTransacao.Lines.Add('');
+    //memoDadosUltimaTransacao.Lines.Add( '-- Retornos do PayGo API --');
+    with TACBrTEFAndroidPayGoClass(ACBrTEFAndroid.TEF) do
+    begin
+      for i := 0 to TEFPayGoAPI.DadosDaTransacao.Count-1 do
+      begin
+        ParseKeyValue(TEFPayGoAPI.DadosDaTransacao[i], TheKey, TheValue);
+        nINFO := StrToIntDef(TheKey,-1);
+        if (nINFO >= 0) then
+          //memoDadosUltimaTransacao.Lines.Add(PWINFOToString(nINFO) + ' = ' + TheValue );
+      end;
+    end;
+  end;
+end;
+
+procedure TForm1.btnAdministrativoClick(Sender: TObject);
+begin
+  //efetuaOperacao(TJOperacoes.JavaClass.ADMINISTRATIVA);
+  ExecutarAdministrativo;
 end;
 // **********************************************
 
@@ -305,11 +596,99 @@ end;
 
 // **********************************************
 procedure TForm1.btnPagarClick(Sender: TObject);
+var
+  TEFOK:Boolean;
+  DateTimeValue: TDateTime;
+  msg,horaTransacao:string;
 begin
   //efetuaOperacao(TJOperacoes.JavaClass.VENDA);
-  efetuaOperacaoPayGo(TJOperacoes.JavaClass.VENDA);
+  //efetuaOperacaoPayGo(TJOperacoes.JavaClass.VENDA);
+  Msg   := '';
+
+  LogAplicacao('INICOUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU');
+  horaTransacao := FormatDateTime('hh:nn:ss.zzz', now);
+  Msg:= Msg+'Status:'+BoolToStr(TefOK)+#10+#13;
+  TefOK := false;
+  Msg:= Msg+'Inicio:'+horaTransacao+#10+#13;
+  Msg:= Msg+'Status:'+BoolToStr(TefOK)+#10+#13;
+
+  IniciaTEFACBR;
+
+  ACBrTEFAndroid.EfetuarPagamento(inttostr(2525),
+                                    strtofloat(editValor.text),
+                                    TACBrTEFModalidadePagamento.tefmpCartao,
+                                    [TACBrTEFTipoCartao.teftcDebito],
+                                    TACBrTEFModalidadeFinanciamento.tefmfAVista,
+                                    0,
+                                    0);
+
+  {horaTransacao := FormatDateTime('hh:nn:ss.zzz', now);
+  Msg:= Msg+'Fim:'+horaTransacao+#10+#13;
+  Msg:= Msg+'Status:'+BoolToStr(TefOK)+#10+#13;
+  ShowMessage(msg);}
 
 end;
+
+
+procedure TForm1.Button1Click(Sender: TObject);
+begin
+  LogAplicacao('botão clicado');
+end;
+
+procedure TForm1.ExecutarAdministrativo(Operacao: String = '');
+begin
+  IniciaTEFACBR;
+  ACBrTEFAndroid.EfetuarAdministrativa(Operacao);
+end;
+
+Procedure  TForm1.IniciaTEFACBR;
+begin
+
+  with ACBrTEFAndroid do
+  begin
+
+
+    if Inicializado then  Exit;
+
+    DesInicializar;
+
+    DiretorioTrabalho := TPath.Combine(TPath.GetPublicPath, 'tef');
+    ArqLOG := TPath.Combine(DiretorioTrabalho, 'acbrtefandroid.log');
+
+    if not DirectoryExists(DiretorioTrabalho) then  ForceDirectories(DiretorioTrabalho);
+
+    Modelo := tefPayGo;
+
+    DadosAutomacao.NomeSoftwareHouse := 'Giro';
+    DadosAutomacao.CNPJSoftwareHouse := '06922188000101';
+    DadosAutomacao.NomeAplicacao     := 'GoParking-PayGoTeste';
+
+    //
+    DadosAutomacao.VersaoAplicacao   := '1';
+    //
+    DadosAutomacao.SuportaSaque := false;
+    //
+    DadosAutomacao.SuportaDesconto := false;
+    //
+    DadosAutomacao.SuportaViasDiferenciadas := true;
+    //
+    DadosAutomacao.ImprimeViaClienteReduzida := false;
+    //
+    DadosAutomacao.UtilizaSaldoTotalVoucher := false;
+
+    DadosEstabelecimento.RazaoSocial := 'Jap Estacionamentos';
+    DadosEstabelecimento.CNPJ        := '06922188000101';
+    //
+    ConfirmarTransacaoAutomaticamente := not cbConfManual.IsChecked;
+
+    TratamentoTransacaoPendente := TACBrTEFTratamentoTransacaoPendente(0);
+    TratamentoTransacaoInicializacao := TACBrTEFTratamentoTransacaoInicializacao(2);
+    Inicializar;
+
+  end;
+
+end;
+
 // **********************************************
 
 // **********************************************
@@ -467,10 +846,15 @@ begin
             if mSaidaTransacao = nil then
                 LogAplicacao('mSaidaTransacao esta NIL');
 
-            mConfimacoes.informaIdentificadorConfirmacaoTransacao(
+            if  mSaidaTransacao.obtemResultadoTransacao() = 0 then
+            begin
+              mConfimacoes.informaIdentificadorConfirmacaoTransacao(
                   mSaidaTransacao.obtemIdentificadorConfirmacaoTransacao
                 );
+            end;
+
           end;
+
         except
           on e : EJNIException do
           begin

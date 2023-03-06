@@ -8,9 +8,7 @@ uses
   GEDIPrinter in 'GEDIPrinter.pas',
   InterfaceAutomacao_v1_6_0_0 in 'InterfaceAutomacao_v1_6_0_0.pas',
   Unit2 in 'Unit2.pas' {Form2},
-  InterfaceAutomacao_v2_0_0_8 in 'InterfaceAutomacao_v2_0_0_8.pas',
-  InterfaceAutomacao_v2_1_0_4 in 'InterfaceAutomacao_v2_1_0_4.pas',
-  InterfaceAutomacao_v2_1 in 'InterfaceAutomacao_v2_1.pas';
+  InterfaceAutomacao_v2_0_0_8 in 'InterfaceAutomacao_v2_0_0_8.pas';
 
 {$R *.res}
 
